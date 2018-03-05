@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 
 import cloudsim.Cloudlet;
+import cloudsim.Host;
+import cloudsim.VirtualMachine;
 import cloudsim.ext.Constants;
 import cloudsim.ext.event.CloudSimEvent;
 import cloudsim.ext.event.CloudSimEventListener;
@@ -18,6 +20,8 @@ public class SJF_VmLoadBalance extends VmLoadBalancer implements CloudSimEventLi
 	private static List<Cloudlet> cloudletlist, cloudletlistsjf;
 	private Map<Integer, VirtualMachineState> vmStatesList;
 	private int listsize,min;
+	private LinkedList<VirtualMachine> vmList;
+
 	
 	public SJF_VmLoadBalance(DatacenterController dcb){
 		dcb.addCloudSimEventListener(this);
@@ -26,6 +30,8 @@ public class SJF_VmLoadBalance extends VmLoadBalancer implements CloudSimEventLi
 		this.cloudletlist = dcb.getCloudletList();
 		this.cloudletlistsjf = new LinkedList<>();
 		cloudletlistsjf = cloudletlist;
+		vmList = new LinkedList<VirtualMachine>();
+
 	}
 
 	/**
@@ -83,11 +89,44 @@ public class SJF_VmLoadBalance extends VmLoadBalancer implements CloudSimEventLi
 			if (cloudletlistsjf.get(i).getCloudletLength() < cloudletlistsjf.get(min).getCloudletLength())
 				min = i;
 		}
+		//TODO : Implement priority into Algorithm
+		//Step 1.5: Select Vm based on priority.
+		for (int j=0;j<cloudletlistsjf.size();j++) {
+			if ((cloudletlistsjf.get(j).getCloudletLength() == cloudletlistsjf.get(min).getCloudletLength())&&(min!=j)) {
+				int vm_min,vm_j,user_min,user_j;
+				VirtualMachine machine_min,machine_j;
+				vm_min = cloudletlistsjf.get(min).getVmId();
+				vm_j = cloudletlistsjf.get(j).getVmId();
+				user_min = cloudletlistsjf.get(min).getUserID();
+				user_j = cloudletlistsjf.get(j).getUserID();
+				machine_min = getVM(user_min,vm_min);
+				machine_j = getVM(user_j, vm_j);
+				/*
+				 *  CHANGE PRIORITY ONLY WHEN : - 
+				 *  1. PRIORITIES ARE NOT SAME
+				 *  2. SELECTED 'MIN' PRIORITY IS LESS THAN 'J' PRIORITY
+				 */
+				if (machine_min.getPriority()!=machine_j.getPriority()) {
+					if (machine_min.getPriority()<machine_j.getPriority()) {
+						min = j;
+					}
+				}
+				
+			}
+		}
 		//Step 2 : Identify Vm with the shortest job length
 		int temp_vmID = cloudletlistsjf.get(min).getVmId();
 		//Step 3 : Remove that cloudlet so that same VmID not selected again and again.
 		cloudletlistsjf.remove(min);
 		return temp_vmID;
+	}
+	public VirtualMachine getVM(int userId, int vmId){
+
+		for(int i=0;i<vmList.size();i++){
+			VirtualMachine vm = vmList.get(i);
+			if(vm.getUserId()==userId&&vm.getVmId()==vmId) return vm;
+		}		
+		return null;
 	}
 
 	public void cloudSimEventFired(CloudSimEvent e) {
